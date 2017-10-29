@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
@@ -9,11 +8,11 @@ namespace se.zite.Utils
     /// <summary>
     /// Example code for an ActionResult which proxies a HttpClient response.
     /// </summary>
+    /// <inheritdoc cref="IDisposable" />
+    /// <inheritdoc cref="ActionResult" />
     public class ProxyResult : ActionResult, IDisposable
     {
         private readonly HttpResponseMessage _proxiedResponse;
-        
-        private static readonly string[] BlackListedHeaders = { "Host", "Connection", "Transfer-Encoding" };
         
         public ProxyResult(HttpResponseMessage proxiedResponse)
         {
@@ -25,13 +24,9 @@ namespace se.zite.Utils
             var response = context.HttpContext.Response;
             
             response.StatusCode = (int) _proxiedResponse.StatusCode;
+
+            ProxyHeadersUtil.CopyProxyHeaders(_proxiedResponse, response);
             
-            response.Headers.Clear();
-            response.Headers.AddAll(
-                _proxiedResponse
-                    .AllHeaders()
-                    .Where(header => !BlackListedHeaders.Contains(header.Key)));
-    
             using (var inStream = await _proxiedResponse.Content.ReadAsStreamAsync())
             {
                 var outStream = response.Body;
